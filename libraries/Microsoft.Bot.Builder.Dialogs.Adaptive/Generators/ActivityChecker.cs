@@ -65,8 +65,8 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive.Generators
             else
             {
                 var diagnosticMessage = string.IsNullOrWhiteSpace(type) ? 
-                    "'type' or '$type' is not exist in lg output json object."
-                    : $"Type '{type}' is not support currently.";
+                    "'lgType' does not exist in lg output json object."
+                    : $"Type '{type}' is not supported currently.";
                 result.Add(BuildDiagnostic(diagnosticMessage));
             }
 
@@ -144,36 +144,37 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive.Generators
 
             foreach (var action in actions)
             {
-                if (!IsStringValue(action))
-                {
-                    if (action is JObject actionJObj)
-                    {
-                        result.AddRange(CheckCardAction(actionJObj));
-                    }
-                    else
-                    {
-                        result.Add(BuildDiagnostic($"'{action}' is not a valid card action format.", false));
-                    }
-                }
+                result.AddRange(CheckCardAction(action));
             }
 
             return result;
         }
 
-        private static IList<Diagnostic> CheckCardAction(JObject cardActionJObj)
+        private static IList<Diagnostic> CheckCardAction(JToken cardActionJtoken)
         {
             var result = new List<Diagnostic>();
-            var type = GetStructureType(cardActionJObj);
-            if (type != nameof(CardAction).ToLowerInvariant())
-            {
-                result.Add(BuildDiagnostic($"'{type}' is not card action type.", false));
-            }
-            else
-            {
-                result.AddRange(CheckPropertyName(cardActionJObj, typeof(CardAction)));
-                var cardActionType = cardActionJObj["type"]?.ToString()?.Trim();
 
-                result.AddRange(CheckCardActionType(cardActionType));
+            if (!IsStringValue(cardActionJtoken))
+            {
+                if (cardActionJtoken is JObject actionJObj)
+                {
+                    var type = GetStructureType(actionJObj);
+                    if (type != nameof(CardAction).ToLowerInvariant())
+                    {
+                        result.Add(BuildDiagnostic($"'{type}' is not card action type.", false));
+                    }
+                    else
+                    {
+                        result.AddRange(CheckPropertyName(actionJObj, typeof(CardAction)));
+                        var cardActionType = actionJObj["type"]?.ToString()?.Trim();
+
+                        result.AddRange(CheckCardActionType(cardActionType));
+                    }
+                }
+                else
+                {
+                    result.Add(BuildDiagnostic($"'{cardActionJtoken}' is not a valid card action format.", false));
+                }
             }
 
             return result;
@@ -280,7 +281,7 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive.Generators
                 return result;
             }
 
-            var properties = value.Properties().Select(u => u.Name.ToLowerInvariant()).Where(u => u != "$type");
+            var properties = value.Properties().Select(u => u.Name.ToLowerInvariant()).Where(u => u != "lgtype");
             IList<string> objectProperties;
 
             if (type == typeof(Activity))
@@ -312,7 +313,7 @@ namespace Microsoft.Bot.Builder.Dialogs.Adaptive.Generators
                 return string.Empty;
             }
 
-            var type = jObj["$type"]?.ToString()?.Trim();
+            var type = jObj["lgType"]?.ToString()?.Trim();
             if (string.IsNullOrEmpty(type))
             {
                 // Adaptive card type
